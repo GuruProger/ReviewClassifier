@@ -1,3 +1,4 @@
+import os
 import re
 import numpy as np
 import pandas as pd
@@ -29,8 +30,9 @@ val_text = val_df['Reviews']
 val_labels = val_df[['Практика', 'Теория', 'Преподаватель', 'Технологии', 'Актуальность']]
 test_text = test_df['Reviews']
 test_labels = test_df[['Практика', 'Теория', 'Преподаватель', 'Технологии', 'Актуальность']]
+
 # Определяем устройство для выполнения вычислений (CPU или GPU)
-device = torch.device('cuda')
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 # Загружаем предобученную модель BERT и токенизатор
 bert = AutoModel.from_pretrained('DeepPavlov/rubert-base-cased-sentence')
@@ -38,36 +40,36 @@ tokenizer = BertTokenizer.from_pretrained('DeepPavlov/rubert-base-cased-sentence
 
 # Токенизация данных с добавлением паддинга и обрезки
 tokens_train = tokenizer.batch_encode_plus(
-    train_text.values,
-    max_length=50,
-    padding='max_length',
-    truncation=True
+	train_text.values,
+	max_length=50,
+	padding='max_length',
+	truncation=True
 )
 tokens_val = tokenizer.batch_encode_plus(
-    val_text.values,
-    max_length=50,
-    padding='max_length',
-    truncation=True
+	val_text.values,
+	max_length=50,
+	padding='max_length',
+	truncation=True
 )
 tokens_test = tokenizer.batch_encode_plus(
-    test_text.values,
-    max_length=50,
-    padding='max_length',
-    truncation=True
+	test_text.values,
+	max_length=50,
+	padding='max_length',
+	truncation=True
 )
 
 # Преобразование токенов в тензоры
-train_seq = torch.tensor(tokens_train['input_ids'])
-train_mask = torch.tensor(tokens_train['attention_mask'])
-train_y = torch.tensor(train_labels.values)
+train_seq = torch.tensor(tokens_train['input_ids']).to(device)
+train_mask = torch.tensor(tokens_train['attention_mask']).to(device)
+train_y = torch.tensor(train_labels.values).to(device)
 
-val_seq = torch.tensor(tokens_val['input_ids'])
-val_mask = torch.tensor(tokens_val['attention_mask'])
-val_y = torch.tensor(val_labels.values)
+val_seq = torch.tensor(tokens_val['input_ids']).to(device)
+val_mask = torch.tensor(tokens_val['attention_mask']).to(device)
+val_y = torch.tensor(val_labels.values).to(device)
 
-test_seq = torch.tensor(tokens_test['input_ids'])
-test_mask = torch.tensor(tokens_test['attention_mask'])
-test_y = torch.tensor(test_labels.values)
+test_seq = torch.tensor(tokens_test['input_ids']).to(device)
+test_mask = torch.tensor(tokens_test['attention_mask']).to(device)
+test_y = torch.tensor(test_labels.values).to(device)
 
 # Задаем размер батча
 batch_size = 8
@@ -83,30 +85,30 @@ val_dataloader = DataLoader(val_data, sampler=val_sampler, batch_size=batch_size
 
 # Замораживаем параметры модели BERT, чтобы они не обновлялись при обучении
 for param in bert.parameters():
-    param.requires_grad = False
+	param.requires_grad = False
 
 
 # Определяем архитектуру модели на основе BERT
 class BERT_Arch(nn.Module):
 
-    def __init__(self, bert: AutoModel.from_pretrained):
-        super(BERT_Arch, self).__init__()
-        self.bert = bert
-        self.dropout = nn.Dropout(0.1)
-        self.relu = nn.ReLU()
-        self.fc1 = nn.Linear(768, 512)
-        self.fc2 = nn.Linear(512, 5)
-        self.softmax = nn.LogSoftmax(dim=1)
+	def __init__(self, bert):
+		super(BERT_Arch, self).__init__()
+		self.bert = bert
+		self.dropout = nn.Dropout(0.1)
+		self.relu = nn.ReLU()
+		self.fc1 = nn.Linear(768, 512)
+		self.fc2 = nn.Linear(512, 5)
+		self.softmax = nn.LogSoftmax(dim=1)
 
-    def forward(self, sent_id, mask):
-        # Извлекаем CLS-токен для классификации
-        _, cls_hs = self.bert(sent_id, attention_mask=mask, return_dict=False)
-        x = self.fc1(cls_hs)
-        x = self.relu(x)
-        x = self.dropout(x)
-        x = self.fc2(x)
-        x = self.softmax(x)
-        return x
+	def forward(self, sent_id, mask):
+		# Извлекаем CLS-токен для классификации
+		_, cls_hs = self.bert(sent_id, attention_mask=mask, return_dict=False)
+		x = self.fc1(cls_hs)
+		x = self.relu(x)
+		x = self.dropout(x)
+		x = self.fc2(x)
+		x = self.softmax(x)
+		return x
 
 
 # Инициализируем модель и перемещаем на устройство
@@ -116,23 +118,19 @@ model = model.to(device)
 from torch.optim import AdamW
 
 # Определяем оптимизатор
-optimizer = AdamW(model.parameters(),
-                  lr=1e-3)
+optimizer = AdamW(model.parameters(), lr=1e-3)
 
 from sklearn.utils.class_weight import compute_class_weight
 
 # Рассчитываем веса классов для учета дисбаланса
 class_weights = compute_class_weight(
-    class_weight="balanced",
-    classes=np.unique(train_labels),
-    y=train_labels.values.reshape(-1)
+	class_weight="balanced",
+	classes=np.unique(train_labels.values),
+	y=train_labels.values.reshape(-1)
 )
 
-print(class_weights)
-
 # Преобразуем веса классов в тензор и перемещаем на устройство
-weights = torch.tensor(class_weights, dtype=torch.float)
-weights = weights.to(device)
+weights = torch.tensor(class_weights, dtype=torch.float).to(device)
 cross_entropy = nn.CrossEntropyLoss()
 
 # Задаем количество эпох
@@ -141,88 +139,100 @@ epochs = 20
 
 # Функция обучения модели
 def train():
-    model.train()
-    total_loss, total_accuracy = 0, 0
-    total_preds = []
+	model.train()
+	total_loss = 0
+	total_preds = []
 
-    for step, batch in tqdm(enumerate(train_dataloader), total=len(train_dataloader)):
-        batch = [r.to(device) for r in batch]
-        sent_id, mask, labels = batch
-        labels = labels.float()  # Приводим метки к float для расчета потерь
-        model.zero_grad()
-        preds = model(sent_id, mask)
-        loss = nn.BCEWithLogitsLoss()(preds, labels)  # Используем бинарную кросс-энтропию с логитами
-        total_loss += loss.item()
-        loss.backward()
-        torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)  # Ограничиваем градиенты для стабильности
-        optimizer.step()
-        preds = preds.detach().cpu().numpy()
-        total_preds.append(preds)
+	for step, batch in tqdm(enumerate(train_dataloader), total=len(train_dataloader)):
+		batch = [r.to(device) for r in batch]
+		sent_id, mask, labels = batch
+		labels = labels.float()  # Приводим метки к float для расчета потерь
+		model.zero_grad()
+		preds = model(sent_id, mask)
+		loss = nn.BCEWithLogitsLoss()(preds, labels)  # Используем бинарную кросс-энтропию с логитами
+		total_loss += loss.item()
+		loss.backward()
+		torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)  # Ограничиваем градиенты для стабильности
+		optimizer.step()
+		preds = preds.detach().cpu().numpy()
+		total_preds.append(preds)
 
-    avg_loss = total_loss / len(train_dataloader)
-    total_preds = np.concatenate(total_preds, axis=0)
+	avg_loss = total_loss / len(train_dataloader)
+	total_preds = np.concatenate(total_preds, axis=0)
 
-    return avg_loss, total_preds
+	return avg_loss, total_preds
 
 
 # Функция оценки модели
 def evaluate():
-    model.eval()
-    total_loss, total_accuracy = 0, 0
-    total_preds = []
+	model.eval()
+	total_loss = 0
+	total_preds = []
 
-    for step, batch in tqdm(enumerate(val_dataloader), total=len(val_dataloader)):
-        batch = [t.to(device) for t in batch]
-        sent_id, mask, labels = batch
+	for step, batch in tqdm(enumerate(val_dataloader), total=len(val_dataloader)):
+		batch = [t.to(device) for t in batch]
+		sent_id, mask, labels = batch
 
-        with torch.no_grad():
-            preds = model(sent_id, mask)
-            loss = cross_entropy(preds, labels.float())  # Применяем cross-entropy для оценки
-            total_loss = total_loss + loss.item()
-            preds = preds.detach().cpu().numpy()
-            total_preds.append(preds)
+		with torch.no_grad():
+			preds = model(sent_id, mask)
+			loss = cross_entropy(preds, labels.float())  # Применяем cross-entropy для оценки
+			total_loss += loss.item()
+			preds = preds.detach().cpu().numpy()
+			total_preds.append(preds)
 
-    avg_loss = total_loss / len(val_dataloader)
-    total_preds = np.concatenate(total_preds, axis=0)
+	avg_loss = total_loss / len(val_dataloader)
+	total_preds = np.concatenate(total_preds, axis=0)
 
-    # Возвращаем средние потери и предсказания
-    return avg_loss, total_preds
+	return avg_loss, total_preds
 
 
 best_valid_loss = float('inf')
 
-train_losses = []
-valid_losses = []
-
-# Основной цикл обучения модели
-for epoch in range(epochs):
-    print('\n Epoch{:} / {:}'.format(epoch + 1, epochs))
-
-    train_loss, _ = train()
-    valid_loss, valid_preds = evaluate()  # Получаем предсказания
-
-    if valid_loss < best_valid_loss:
-        best_valid_loss = valid_loss
-        torch.save(model.state_dict(), 'saved_weights.pt')  # Сохраняем лучшие веса модели
-
-    train_losses.append(train_loss)
-    valid_losses.append(valid_loss)
-    print(f'\nTraining loss: {train_loss:.3f}')
-    print(f'Validation loss: {valid_loss:.3f}')
-
-# Загрузка наилучших сохраненных весов модели
+# Проверка, существует ли файл с весами
 path = 'saved_weights.pt'
-model.load_state_dict(torch.load(path))
+if os.path.exists(path):
+	print("Файл с весами найден. Загружаем веса вместо обучения.")
+	model.load_state_dict(torch.load(path))
+else:
+	# Если сохраненных весов нет, обучаем модель
+	best_valid_loss = float('inf')
+	train_losses = []
+	valid_losses = []
+
+	for epoch in range(epochs):
+		print(f'\n Epoch {epoch + 1} / {epochs}')
+
+		train_loss, _ = train()
+		valid_loss, valid_preds = evaluate()
+
+		if valid_loss < best_valid_loss:
+			best_valid_loss = valid_loss
+			torch.save(model.state_dict(), path)  # Сохраняем лучшие веса модели
+
+		train_losses.append(train_loss)
+		valid_losses.append(valid_loss)
+		print(f'\nTraining loss: {train_loss:.3f}')
+		print(f'Validation loss: {valid_loss:.3f}')
+
+	# Загрузка наилучших сохраненных весов модели
+	model.load_state_dict(torch.load(path))
 
 # Пример использования модели на новых данных
-predictions = ["Крутой преподователь"]
+new_text = ["спасибо "]
+new_tokens = tokenizer.batch_encode_plus(
+	new_text,
+	max_length=50,
+	padding='max_length',
+	truncation=True
+)
+
+new_seq = torch.tensor(new_tokens['input_ids']).to(device)
+new_mask = torch.tensor(new_tokens['attention_mask']).to(device)
+
 with torch.no_grad():
-    preds = model(test_seq, test_mask)
-    predictions.append(preds.detach().cpu().numpy())
+	preds = model(new_seq, new_mask)
+	preds = preds.detach().cpu().numpy()
 
 # Применяем пороговое значение для классификации
-flat_preds = (predictions[0] > 0.5).astype(int)
-
-test_df['confidence'] = flat_preds
-print(test_df)
-print(flat_preds)
+predictions = (preds > 0.5).astype(int)
+print(predictions)
