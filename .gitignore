@@ -5,5 +5,5 @@
 # local dev files
 __pycache__
 
-saved_weights.pt
-new.csv
+model/saved_weights.pt
+model/new.csv
