@@ -6,4 +6,6 @@
 __pycache__
 
 model/saved_weights.pt
-model/new.csv
+model/model_answer.csv
+model/auto_and_void.csv
+model/combined.csv
