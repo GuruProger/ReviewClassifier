@@ -8,3 +8,5 @@ seaborn
 nltk
 thefuzz
 python-Levenshtein
+aiogram>=3.0.0a12
+environs

@@ -5,7 +5,9 @@
 # local dev files
 __pycache__
 
+.env
+
 model/saved_weights.pt
 model/model_answer.csv
-model/auto_and_void.csv
-model/combined.csv
+model/auto_answer.csv
+model/combined_answer.csv
