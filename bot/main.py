@@ -8,7 +8,7 @@ from aiogram.client.default import DefaultBotProperties
 from aiogram.enums.parse_mode import ParseMode
 
 from core.handlers.handler import cmd_start, cmd_help
-from core.handlers.basic import handle_csv_upload
+from core.handlers.basic import handle_csv_upload, handle_text_message
 
 load_dotenv()
 token = os.getenv("TOKEN_TELEGRAM")
@@ -29,7 +29,7 @@ async def stop_bot(bot: Bot):
 
 # Функция запуска бота
 async def main():
-		# Создаем объект бота с заданным токеном, присваиваем HTML parse_mode для использования  HTML тегов в сообщениях
+	# Создаем объект бота с заданным токеном, присваиваем HTML parse_mode для использования  HTML тегов в сообщениях
 	bot = Bot(token=token, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
 
 	dp = Dispatcher()  # Создаем диспетчер для обработки входящих сообщений и команд
@@ -40,7 +40,9 @@ async def main():
 	dp.message.register(cmd_start, Command(commands=['start']))
 	dp.message.register(cmd_help, Command(commands=['help']))
 
-	dp.message.register(handle_csv_upload, F.document)
+	dp.message.register(handle_csv_upload, F.document)  # При отправке файла
+	dp.message.register(handle_text_message)  # При отправке сообщения
+
 	# dp.message.handlers(handle_csv_upload, content_types=ContentType.DOCUMENT)
 	logging.basicConfig(level=logging.INFO)  # Настраиваем логирование
 

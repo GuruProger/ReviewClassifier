@@ -14,3 +14,8 @@ async def handle_csv_upload(message: Message, bot: Bot):
 	# Завершаем состояние ожидания файла
 	else:
 		await message.answer("Пожалуйста, загрузите CSV файл.")
+
+
+# Обработчик отправки текстового сообщения
+async def handle_text_message(message: Message, bot: Bot):
+	...
