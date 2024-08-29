@@ -4,6 +4,23 @@ from database import DatabaseClient
 # Инициализация FastAPI приложения
 app = FastAPI()
 
+# Закомментированные эндпоинты для обработки текстовых и файловых данных.
+# Они пока не реализованы полностью
+'''
+@app.post("/predict/text")
+async def review_from_list(request: Request):
+    data = await request.json()
+    # какой-то код
+    return {"status": "success"}
+
+
+@app.post("/predict/file")
+async def review_from_file(request: Request):
+    data = await request.json()
+    # какой-то код
+    return {"status": "success"}
+'''
+
 
 # Эндпоинт для получения статистики по курсу
 @app.get("/statistics")
