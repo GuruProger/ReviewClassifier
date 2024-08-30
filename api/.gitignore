@@ -1,0 +1,6 @@
+# PyCharm, MacOS files
+.DS_Store
+.idea/
+
+# local dev files
+__pycache__
