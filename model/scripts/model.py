@@ -37,9 +37,10 @@ def get_model(n_classes=5, device=None):
 		model = ReviewsClassifier(n_classes)
 		model = model.to(device)
 
-		if path_weights.exists():
-			print("Loading model weights from:", path_weights)
-			model.load_state_dict(torch.load(path_weights, map_location=device))
+		# Проверка пути с помощью assert
+		assert path_weights.exists(), f"Weight file not found at: {path_weights}"
+		print("Loading model weights from:", path_weights)
+		model.load_state_dict(torch.load(path_weights, map_location=device))
 
 		_model_instance = model
 
