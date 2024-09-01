@@ -1,10 +1,10 @@
 from fastapi import FastAPI, Request, HTTPException, UploadFile, File, Form
+from fastapi.concurrency import run_in_threadpool
 import httpx
 from database import DatabaseClient
 
 # Инициализация FastAPI приложения
 app = FastAPI()
-
 
 @app.post("/predict/text")
 async def review_from_list(request: Request):
@@ -16,9 +16,10 @@ async def review_from_list(request: Request):
     if not platform_key:
         raise HTTPException(status_code=400, detail="Missing platform_key")
 
+    # Использование синхронного контекстного менеджера
     with DatabaseClient() as db:
-        # Проверка существования пользователя по ключу платформы
-        user = db.get_user_by_key(platform_key)
+        # Асинхронное выполнение синхронной операции с базой данных
+        user = await run_in_threadpool(db.get_user_by_key, platform_key)
         if not user:
             raise HTTPException(status_code=404, detail="Invalid platform key")
 
@@ -37,7 +38,6 @@ async def review_from_list(request: Request):
 
     return {"status": "success"}
 
-
 @app.post("/predict/file")
 async def review_from_file(
         file: UploadFile = File(...),
@@ -53,8 +53,7 @@ async def review_from_file(
         raise HTTPException(status_code=400, detail="Missing platform_key or course_key")
 
     with DatabaseClient() as db:
-        # Проверка существования пользователя по ключу платформы
-        user = db.get_user_by_key(platform_key)
+        user = await run_in_threadpool(db.get_user_by_key, platform_key)
         if not user:
             raise HTTPException(status_code=404, detail="Invalid platform key")
 
@@ -79,23 +78,18 @@ async def review_from_file(
 
     return {"status": "success"}
 
-
 @app.get("/statistics")
 async def statistics(request: Request):
-    # Получение параметров из строки запроса
     platform_key = request.query_params.get("platform_key")
     course_key = request.query_params.get("course_key")
 
-    # Проверка наличия ключей платформы и курса
     if not platform_key or not course_key:
         raise HTTPException(status_code=400, detail="Missing platform_key or course_key")
 
     with DatabaseClient() as db:
-        # Проверка существования пользователя по ключу платформы
-        user = db.get_user_by_key(platform_key)
+        user = await run_in_threadpool(db.get_user_by_key, platform_key)
         if user:
-            # Получение статистики по курсу
-            result = db.get_statistics_for_course(user[0], course_key)
+            result = await run_in_threadpool(db.get_statistics_for_course, user[0], course_key)
             if result:
                 return {"status": "success", "result": result}
             else:
@@ -103,23 +97,18 @@ async def statistics(request: Request):
         else:
             raise HTTPException(status_code=404, detail="Invalid platform key")
 
-
 @app.post("/course")
 async def course_add(request: Request):
-    # Получение данных JSON из тела запроса
     data = await request.json()
     platform_key = data.get("platform_key")
 
-    # Проверка наличия ключа платформы
     if not platform_key:
         raise HTTPException(status_code=400, detail="Missing platform_key")
 
     with DatabaseClient() as db:
-        # Проверка существования пользователя по ключу платформы
-        user = db.get_user_by_key(platform_key)
+        user = await run_in_threadpool(db.get_user_by_key, platform_key)
         if user:
-            # Добавление нового курса для пользователя
-            result = db.add_course(user[0])
+            result = await run_in_threadpool(db.add_course, user[0])
             if result:
                 return {"status": "success", "result": result}
             else:
@@ -127,30 +116,26 @@ async def course_add(request: Request):
         else:
             raise HTTPException(status_code=404, detail="Invalid platform key")
 
-
 @app.delete("/course")
 async def course_delete(request: Request):
-    # Получение данных JSON из тела запроса
     data = await request.json()
     platform_key = data.get("platform_key")
     course_key = data.get("course_key")
 
-    # Проверка наличия ключей платформы и курса
     if not platform_key or not course_key:
         raise HTTPException(status_code=400, detail="Missing platform_key or course_key")
 
     with DatabaseClient() as db:
-        # Проверка существования пользователя по ключу платформы
-        user = db.get_user_by_key(platform_key)
+        user = await run_in_threadpool(db.get_user_by_key, platform_key)
         if user:
-            # Удаление курса по ключу курса
-            result = db.del_course(user[0], course_key)
+            result = await run_in_threadpool(db.del_course, user[0], course_key)
             if result == "ok":
                 return {"status": "success", "result": result}
             else:
                 raise HTTPException(status_code=500, detail="Failed to delete course")
         else:
             raise HTTPException(status_code=404, detail="Invalid platform key")
+
 
 if __name__ == "__main__":
     import uvicorn
