@@ -1,16 +1,6 @@
 import sqlite3
 import json
 import secrets
-import string
-
-
-# Функция для генерации уникального ключа определенной длины
-def generate_unique_key(length=4):
-    # Определите возможные символы: буквы (все регистры) и цифры
-    characters = string.ascii_letters + string.digits
-    # Генерируйте уникальный ключ случайным образом из возможных символов
-    key = ''.join(secrets.choice(characters) for _ in range(length))
-    return key
 
 
 # Класс для работы с базой данных
@@ -18,6 +8,7 @@ class DatabaseClient():
     def __init__(self):
         # Инициализация и подключение к базе данных при создании объекта
         self.connection = self.connect_to_database()
+        self.connection.execute('PRAGMA journal_mode=WAL;')
 
     # Метод, вызываемый при входе в контекстный менеджер (with)
     def __enter__(self):
@@ -29,9 +20,9 @@ class DatabaseClient():
         self.connection.close()
 
     # Метод для подключения к базе данных
-    def connect_to_database(self, db_name="Feedback_AI.db"):
+    def connect_to_database(self, db_name="api/Feedback_AI.db"):
         # Устанавливаем соединение с базой данных SQLite
-        self.conn = sqlite3.connect(db_name)
+        self.conn = sqlite3.connect(db_name, timeout=3)
         # Возвращаем курсор для выполнения SQL-запросов
         return self.conn.cursor()
 
@@ -101,7 +92,7 @@ class DatabaseClient():
     def add_course(self, owner):
         try:
             # Генерируем уникальный ключ для курса
-            key = generate_unique_key()
+            key = secrets.token_hex(2)
             # Выполняем SQL-запрос для добавления нового курса в базу данных
             self.connection.execute("""INSERT INTO courses (key, owner) VALUES (?, ?)""", (key, owner))
             self.conn.commit()  # Фиксируем изменения в базе данных
@@ -115,7 +106,11 @@ class DatabaseClient():
     def add_user(self, tg_id):
         try:
             # Генерируем уникальный ключ (хэш) для пользователя
-            hash_key = generate_unique_key(length=32)
+            hash_key = secrets.token_hex(16)
+            user = self.connection.execute("""SELECT id FROM users
+                                                            WHERE tg_id = ?""", (tg_id,)).fetchone()
+            if user:
+                return "Пользователь уже существует"
             # Выполняем SQL-запрос для добавления нового пользователя в базу данных
             self.connection.execute("""INSERT INTO users (tg_id, hash_key) VALUES (?, ?)""", (tg_id, hash_key))
             self.conn.commit()  # Фиксируем изменения в базе данных
@@ -135,4 +130,15 @@ class DatabaseClient():
         except sqlite3.Error as e:
             # В случае ошибки выводим сообщение и возвращаем None
             print(f"Error deleting course: {e}")
+            return None
+
+    def get_user_by_tg(self, key):
+        try:
+            # Выполняем SQL-запрос для поиска пользователя по ключу
+            result = self.connection.execute("""SELECT hash_key, current_plan FROM users
+                                                WHERE tg_id = ?""", (key,)).fetchone()
+            return result
+        except sqlite3.Error as e:
+            # В случае ошибки выводим сообщение и возвращаем None
+            print(f"Error getting user by key: {e}")
             return None

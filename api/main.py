@@ -163,6 +163,39 @@ async def save_the_prediction(request: Request):
     return {"status": "error"}  # Возврат ошибки при неудачном обновлении
 
 
+@app.post("/add_user")
+async def add_user(request: Request):
+    data = await request.json()  # Получение данных из запроса
+
+    if data["secret_key"] != "23b301fe34fecfb712ee62fd33069686":
+        return {"status": "error: wrong key"}
+
+    with DatabaseClient() as db:
+        user_key = db.add_user(data["tg_key"])  # Проверка существования пользователя по ключу платформы
+        if user_key:
+            return {"status": "success", "key": user_key}  # Возврат успешного результата
+
+    return {"status": "error"}  # Возврат ошибки при неудачном обновлении
+
+
+@app.get("/get_user")
+async def get_user(request: Request):
+    # Получение параметров platform_key и course_key из строки запроса
+    secret_key = request.query_params.get("secret_key")
+    tg_id = request.query_params.get("tg_id")
+
+    if secret_key != "23b301fe34fecfb712ee62fd33069686":
+        return {"status": "error: wrong key"}
+
+    # Синхронная работа с базой данных
+    with DatabaseClient() as db:
+        user = db.get_user_by_tg(tg_id)  # Проверка существования пользователя
+        if user:
+            return {"status": "success", "user": user}  # Возврат успешного результата
+        else:
+            raise HTTPException(status_code=404, detail="Invalid tg_id")  # Ошибка, если статистика курса не найдена
+
+
 if __name__ == '__main__':
     import uvicorn
     # Запуск приложения FastAPI с помощью uvicorn

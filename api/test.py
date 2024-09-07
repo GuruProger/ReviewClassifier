@@ -58,3 +58,20 @@ def test_del_course():
     }
     response = requests.delete(f"{base_url}/course", json=data)
     print("POST /course:", response.json())
+
+
+def test_add_user():
+    data = {
+        "secret_key": "23b301fe34fecfb712ee62fd33069686",  # Замените на действительный ключ
+        "tg_key": "213212"  # Замените на действительный ключ
+    }
+    response = requests.post(f"{base_url}/add_user", json=data)
+    print("POST /add_user:", response.json())
+
+def test_get_user():
+    params = {
+        "secret_key": "23b301fe34fecfb712ee62fd33069686",  # Замените на действительный ключ
+        "tg_id": "213212"  # Замените на действительный ключ
+    }
+    response = requests.get(f"{base_url}/get_user", params=params)
+    print("GET /get_user:", response.json())
