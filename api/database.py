@@ -62,6 +62,13 @@ class DatabaseClient():
                 # Преобразуем статистику из JSON-строки в словарь
                 processed_course_statistics = json.loads(course_statistics[0])
                 # Обновляем значения статистики на основе новых данных
+                new_data = {
+                                "practice": int(new_data[0]),
+                                "theory": int(new_data[1]),
+                                "teacher": int(new_data[2]),
+                                "technology": int(new_data[3]),
+                                "relevance": int(new_data[4])
+                            }
                 for key in new_data:
                     if key in processed_course_statistics:
                         processed_course_statistics[key] += new_data[key]
@@ -70,9 +77,11 @@ class DatabaseClient():
                                            WHERE key = ? AND owner = ?""",
                                         (json.dumps(processed_course_statistics), course_key, owner))
                 self.conn.commit()  # Фиксируем изменения в базе данных
+                return 1
         except sqlite3.Error as e:
             # В случае ошибки выводим сообщение
             print(f"Error updating statistics for course: {e}")
+            return
 
     # Метод для получения статистики по курсу
     def get_statistics_for_course(self, owner, course_key):

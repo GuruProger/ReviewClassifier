@@ -1,14 +1,42 @@
 import requests
 
 # Базовый URL для вашего API
-base_url = "http://127.0.0.1:42"
+base_url = "http://localhost:8000"
+
+
+def test_review_from_list():
+    data = {
+        "platform_key": "ebfbwiebflbsvjhbjehf",  # Замените на действительный ключ платформы
+        "course_key": "t0ZH",
+        "review": ['Преподователь топ, теория тоже. Практика просто офигенная']
+    }
+    response = requests.post(f"{base_url}/predict/text", data=data)
+    print("POST /course:", response.json())
+
+
+def test_review_from_file():
+    file_path = 'test_reviews.csv'
+
+    with open(file_path, 'rb') as file:
+        files = {'file': (file_path, file, 'text/csv')}
+        data = {
+            "platform_key": "ebfbwiebflbsvjhbjehf",  # Замените на действительный ключ платформы
+            "course_key": "t0ZH"
+        }
+        response = requests.post('http://localhost:8000/predict/file', files=files, data=data)
+
+        # Проверка успешности запроса
+        if response.status_code == 200:
+            print('Success:', response.json())
+        else:
+            print('Failed:', response.status_code, response.text)
 
 
 # Тестирование эндпоинта /statistics
 def test_statistics():
     params = {
         "platform_key": "ebfbwiebflbsvjhbjehf",  # Замените на действительный ключ платформы
-        "course_key": "iehZ"  # Замените на действительный ключ курса
+        "course_key": "t0ZH"  # Замените на действительный ключ курса
     }
     response = requests.get(f"{base_url}/statistics", params=params)
     print("GET /statistics:", response.json())
@@ -23,22 +51,10 @@ def test_add_course():
     print("POST /course:", response.json())
 
 
-# Тестирование эндпоинта /course для удаления курса
-def test_delete_course():
+def test_del_course():
     data = {
         "platform_key": "ebfbwiebflbsvjhbjehf",  # Замените на действительный ключ платформы
-        "course_key": "ltEd"  # Замените на действительный ключ курса
+        "course_key": "t0ZH"  # Замените на действительный ключ курса
     }
     response = requests.delete(f"{base_url}/course", json=data)
-    print("DELETE /course:", response.json())
-
-
-def test_review_from_list():
-    data = {
-        "platform_key": "ebfbwiebflbsvjhbjehf",  # Замените на действительный ключ платформы
-        "course_key": "ltEd",
-        "review": ['оментарий для проверки']
-    }
-    response = requests.post(f"{base_url}/predict/text", json=data)
     print("POST /course:", response.json())
-
