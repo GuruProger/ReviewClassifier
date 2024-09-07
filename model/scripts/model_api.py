@@ -6,6 +6,8 @@ from fastapi import FastAPI, HTTPException, UploadFile, File, Form, BackgroundTa
 import httpx
 import pandas as pd
 
+URL = "http://localhost:8000"
+
 # Конфигурация модели и токенизатора
 # Имя предварительно обученной модели и параметры
 PRE_TRAINED_MODEL_NAME = 'DeepPavlov/rubert-base-cased'
@@ -72,11 +74,8 @@ def process_predictions(reviews, platform_key, course_key):
         "course_key": course_key,
         "predictions": [sum(x) for x in zip(*predictions)]
     }
-
-    # Отправка результатов на другой API
-    save_url = "http://localhost:8000/save_the_prediction"
     try:
-        response = httpx.post(save_url, json=results)
+        response = httpx.post(f"{URL}/save_the_prediction", data=results)
         response.raise_for_status()
     except httpx.HTTPStatusError as e:
         # Обработка ошибки отправки

@@ -43,7 +43,7 @@ class DatabaseClient():
             return None
 
     # Метод для обновления статистики курса
-    def update_statistics_for_course(self, owner, course_key, new_data):
+    def update_statistics_for_course(self, owner, course_key, new_stat):
         try:
             # Получаем текущую статистику курса из базы данных
             course_statistics = self.connection.execute("""SELECT feedback_statistics FROM courses
@@ -51,17 +51,24 @@ class DatabaseClient():
                                                         (course_key, owner)).fetchone()
             if course_statistics:
                 # Преобразуем статистику из JSON-строки в словарь
+
                 processed_course_statistics = json.loads(course_statistics[0])
                 # Обновляем значения статистики на основе новых данных
                 new_data = {
-                                "practice": int(new_data[0]),
-                                "theory": int(new_data[1]),
-                                "teacher": int(new_data[2]),
-                                "technology": int(new_data[3]),
-                                "relevance": int(new_data[4])
+                                "practice": int(new_stat[0]),
+                                "theory": int(new_stat[1]),
+                                "teacher": int(new_stat[2]),
+                                "technology": int(new_stat[3]),
+                                "relevance": int(new_stat[4])
                             }
                 for key in new_data:
                     if key in processed_course_statistics:
+                        print( processed_course_statistics)
+                        print(new_data)
+                        print(key)
+                        print(new_data["practice"])
+                        print(type(processed_course_statistics))
+                        print(processed_course_statistics["practice"])
                         processed_course_statistics[key] += new_data[key]
                 # Сохраняем обновленную статистику обратно в базу данных
                 self.connection.execute("""UPDATE courses SET feedback_statistics = ? 
