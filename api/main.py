@@ -113,7 +113,8 @@ async def statistics(
 @app.post("/course", summary="Добавление курса",
 		  description="Добавляет новый курс для пользователя по ключу платформы.")
 async def course_add(
-		platform_key: str = Form(..., description="Ключ платформы пользователя")
+		platform_key: str = Form(..., description="Ключ платформы пользователя"),
+		name: str = Form(..., description="Название курса")
 ):
 	# Проверка наличия ключа платформы
 	if not platform_key:
@@ -123,7 +124,7 @@ async def course_add(
 	with DatabaseClient() as db:
 		user = db.get_user_by_key(platform_key)
 		if user:
-			result = db.add_course(user[0])
+			result = db.add_course(user[0], name)
 			if result:
 				return {"status": "success", "result": result}
 			else:
@@ -163,7 +164,6 @@ async def save_the_prediction(
 		course_key: str = Form(..., description="Ключ курса"),
 		predictions: List = Form(..., description="Предсказания для курса")
 ):
-	print(predictions, type(predictions))
 	# Обновление статистики курса с новыми предсказаниями
 	with DatabaseClient() as db:
 		user = db.get_user_by_key(platform_key)
@@ -178,7 +178,7 @@ async def save_the_prediction(
 		  description="Добавляет нового пользователя по ключу платформы и возвращает ключ пользователя. Требуется секретный ключ для авторизации.")
 async def add_user(
 		secret_key: str = Form(..., description="Секретный ключ для авторизации"),
-		tg_key: str = Form(..., description="ТГ ключ пользователя")
+		tg_id: str = Form(..., description="ТГ ключ пользователя")
 ):
 	# Проверка секретного ключа
 	if secret_key != SECRET_KEY:
@@ -186,7 +186,7 @@ async def add_user(
 
 	# Добавление нового пользователя в базу данных
 	with DatabaseClient() as db:
-		user_key = db.add_user(tg_key)
+		user_key = db.add_user(tg_id)
 		if user_key:
 			return {"status": "success", "key": user_key}
 
@@ -209,6 +209,27 @@ async def get_user(
 		user = db.get_user_by_tg(tg_id)
 		if user:
 			return {"status": "success", "user": user}
+		else:
+			raise HTTPException(status_code=404, detail="Invalid tg_id")
+
+
+# Эндпоинт для получения данных пользователя
+@app.get("/get_all_courses", summary="Получение всех курсов пользователя",
+		 description="Возвращает список курсов по TG ID при наличии действительного секретного ключа.")
+async def get_all_courses(
+		platform_key: str = Query(..., description="Ключ платформы пользователя")
+):
+
+	# Проверка наличия ключей
+	if not platform_key:
+		raise HTTPException(status_code=400, detail="Missing platform_key or tg_id")
+
+	# Получение данных пользователя из базы данных
+	with DatabaseClient() as db:
+		user = db.get_user_by_key(platform_key)
+		if user:
+			courses = db.get_all_courses(user[0])
+			return {"status": "success", "courses": courses}
 		else:
 			raise HTTPException(status_code=404, detail="Invalid tg_id")
 

@@ -1,7 +1,9 @@
 import sqlite3
 import json
 import secrets
+from pathlib import Path
 
+db_path = Path(__file__).resolve().parent / "Feedback_AI.db"
 
 # Класс для работы с базой данных
 class DatabaseClient:
@@ -20,7 +22,7 @@ class DatabaseClient:
 		self.connection.close()
 
 	# Метод для подключения к базе данных
-	def connect_to_database(self, db_name="api/Feedback_AI.db"):
+	def connect_to_database(self, db_name=db_path):
 		# Устанавливаем соединение с базой данных SQLite
 		self.conn = sqlite3.connect(db_name, timeout=3)
 		# Возвращаем курсор для выполнения SQL-запросов
@@ -96,12 +98,12 @@ class DatabaseClient:
 			return None
 
 	# Метод для добавления нового курса
-	def add_course(self, owner):
+	def add_course(self, owner, name):
 		try:
 			# Генерируем уникальный ключ для курса
 			key = secrets.token_hex(2)
 			# Выполняем SQL-запрос для добавления нового курса в базу данных
-			self.connection.execute("""INSERT INTO courses (key, owner) VALUES (?, ?)""", (key, owner))
+			self.connection.execute("""INSERT INTO courses (key, owner, name) VALUES (?, ?, ?)""", (key, owner, name))
 			self.conn.commit()  # Фиксируем изменения в базе данных
 			return key  # Возвращаем ключ нового курса
 		except sqlite3.Error as e:
@@ -148,4 +150,15 @@ class DatabaseClient:
 		except sqlite3.Error as e:
 			# В случае ошибки выводим сообщение и возвращаем None
 			print(f"Error getting user by key: {e}")
+			return None
+
+	def get_all_courses(self, key):
+		try:
+			# Выполняем SQL-запрос для поиска пользователя по ключу
+			result = self.connection.execute("""SELECT key, name FROM courses
+			                                                WHERE owner = ?""", (key,)).fetchall()
+			return result
+		except sqlite3.Error as e:
+			# В случае ошибки выводим сообщение и возвращаем None
+			print(f"Error getting courses: {e}")
 			return None

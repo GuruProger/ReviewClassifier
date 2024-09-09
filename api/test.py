@@ -63,7 +63,7 @@ def test_del_course():
 def test_add_user():
 	data = {
 		"secret_key": SECRET_KEY,  # Замените на действительный ключ
-		"tg_key": "654321"  # Замените на действительный ключ
+		"tg_id": "654321"  # Замените на действительный ключ
 	}
 	response = requests.post(f"{BASE_URL}/add_user", data=data)
 	print("POST /add_user:", response.json())
@@ -75,6 +75,13 @@ def test_get_user():
 		"tg_id": "123456"  # Замените на действительный TG ID
 	}
 	response = requests.get(f"{BASE_URL}/get_user", params=params)
+	print("GET /get_user:", response.json())
+
+def test_get_all_course():
+	params = {
+		"platform_key": PLATFORM_KEY,  # Замените на действительный ключ
+	}
+	response = requests.get(f"{BASE_URL}/get_all_course", params=params)
 	print("GET /get_user:", response.json())
 
 
