@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Diagram>
+  <ID>DATABASE</ID>
+  <OriginalElement>9a5b585d-2074-42bb-8e50-4158e155e93a.SCHEMA:main</OriginalElement>
+  <nodes>
+    <node x="48.0" y="271.0">9a5b585d-2074-42bb-8e50-4158e155e93a.TABLE:main.sqlite_master</node>
+    <node x="-72.5" y="44.5">9a5b585d-2074-42bb-8e50-4158e155e93a.TABLE:main.users</node>
+    <node x="19.0" y="-87.0">9a5b585d-2074-42bb-8e50-4158e155e93a.TABLE:main.sqlite_sequence</node>
+    <node x="-92.0" y="484.5">9a5b585d-2074-42bb-8e50-4158e155e93a.TABLE:main.courses</node>
+  </nodes>
+  <notes />
+  <edges>
+    <edge source="9a5b585d-2074-42bb-8e50-4158e155e93a.TABLE:main.courses" target="9a5b585d-2074-42bb-8e50-4158e155e93a.TABLE:main.users" relationship="REFERENCES">
+      <point x="0.0" y="-73.5" />
+      <point x="0.0" y="73.5" />
+    </edge>
+  </edges>
+  <settings layout="Hierarchic Compact" zoom="0.7483085250338295" showDependencies="false" x="50.0" y="272.5" />
+  <SelectedNodes />
+  <Categories>
+    <Category>Columns</Category>
+    <Category>Comments</Category>
+    <Category>Key columns</Category>
+    <Category>Virtual foreign keys</Category>
+  </Categories>
+</Diagram>
+
