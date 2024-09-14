@@ -45,7 +45,9 @@ def test_statistics():
 
 def test_add_course():
 	data = {
-		"platform_key": PLATFORM_KEY  # Замените на действительный ключ платформы
+		"platform_key": PLATFORM_KEY,  # Замените на действительный ключ платформы
+		"name": "Python с нуля"
+
 	}
 	response = requests.post(f"{BASE_URL}/course", data=data)
 	print("POST /course:", response.json())
