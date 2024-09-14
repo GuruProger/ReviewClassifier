@@ -2,6 +2,8 @@ import io
 import requests
 from aiogram import Bot
 from aiogram.types import Message, BufferedInputFile
+from aiogram.fsm.context import FSMContext
+
 from ..utils.model_prediction import predict_file, predict_text
 
 
@@ -50,3 +52,9 @@ async def handle_text_message(message: Message, bot: Bot):
 			text_answer += f"Предсказанные аспекты: {', '.join(text_aspect)}\n"
 
 		await message.reply(text_answer)
+
+
+async def handle_add_course(message: Message, bot: Bot, state: FSMContext):
+	print(message.text)
+	await state.clear()
+	...

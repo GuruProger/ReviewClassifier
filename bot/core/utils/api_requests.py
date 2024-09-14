@@ -11,7 +11,7 @@ BASE_URL = "http://localhost:8000"
 def add_user(user_id: int | str):
 	data = {
 		"secret_key": secret_key,
-		"tg_key": user_id
+		"tg_id": user_id
 	}
 
 	try:
@@ -42,7 +42,3 @@ def get_user(user_id: int | str):
 			return {'status': 'error', 'message': 'HTTP error'}
 	except httpx.HTTPStatusError as e:
 		return {'status': 'error', 'message': e.response.text}
-
-
-# print(add_user('1234156'))
-# print(get_user('12312312312'))

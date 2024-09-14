@@ -2,13 +2,14 @@ import os
 from dotenv import load_dotenv
 import logging
 from aiogram import Bot, Dispatcher, F
-from aiogram.types import Message, ContentType
 from aiogram.filters import Command
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums.parse_mode import ParseMode
 
-from core.handlers.handler import cmd_start, cmd_help
-from core.handlers.basic import handle_csv_upload, handle_text_message
+from core.handlers.handler import cmd_start, cmd_help, cmd_course
+from core.handlers.basic import handle_csv_upload, handle_text_message, handle_add_course
+from core.handlers.callback import callback_add_course, callback_my_courses
+from core.utils.statesform import StepsForm
 
 load_dotenv()
 token = os.getenv("TOKEN_TELEGRAM")
@@ -37,8 +38,17 @@ async def main():
 	dp.startup.register(start_bot)  # Функция срабатывает при запуске бота
 	dp.shutdown.register(stop_bot)  # Функция срабатывает при остановке бота
 
+	dp.message.register(handle_add_course, StepsForm.ADD_COURSE)  # При отправке названия курса
+
+	# Обработка команд
 	dp.message.register(cmd_start, Command(commands=['start']))
+	dp.message.register(cmd_course, Command(commands=['course']))
 	dp.message.register(cmd_help, Command(commands=['help']))
+
+	# Обработка нажатия на inline кнопки
+	dp.callback_query.register(callback_my_courses, F.data.startswith('my_courses'))
+	dp.callback_query.register(callback_add_course, F.data.startswith('add_course'))
+
 
 	dp.message.register(handle_csv_upload, F.document)  # При отправке файла
 	dp.message.register(handle_text_message)  # При отправке сообщения
