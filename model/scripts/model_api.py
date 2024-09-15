@@ -1,134 +1,77 @@
 import torch
+import pandas as pd
+from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi.responses import StreamingResponse
+from pydantic import BaseModel
 from transformers import AutoTokenizer
 from model import get_model
+from data_loader import ReviewPredictor
+from typing import Dict
 import io
-from fastapi import FastAPI, HTTPException, UploadFile, File, Form, BackgroundTasks
-import httpx
-import pandas as pd
-
-URL = "http://localhost:8000"
 
 # Конфигурация модели и токенизатора
-# Имя предварительно обученной модели и параметры
 PRE_TRAINED_MODEL_NAME = 'DeepPavlov/rubert-base-cased'
-MAX_LEN = 250  # Максимальная длина токенизированного текста
-BATCH_SIZE = 64  # Размер пакета для предсказаний
-TOPIC_KEYWORDS = ['практика', 'теория', 'преподаватель', 'технологии', 'актуальность']  # Список ключевых слов,
-# связанных с темами
+MAX_LEN = 250
+BATCH_SIZE = 64
+TOPIC_KEYWORDS = ['практика', 'теория', 'преподаватель', 'технологии', 'актуальность']
 
 # Инициализация токенизатора и модели
-# Создание токенизатора на основе предобученной модели
 tokenizer = AutoTokenizer.from_pretrained(PRE_TRAINED_MODEL_NAME, clean_up_tokenization_spaces=True)
-
-# Получение модели с заданным количеством классов (в данном случае, по числу ключевых слов)
 model = get_model(n_classes=len(TOPIC_KEYWORDS))
-
-# Определение устройства для вычислений (GPU или CPU)
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-
-# Перемещение модели на выбранное устройство
 model.to(device)
-
-# Установка модели в режим оценки (инференса)
 model.eval()
 
-
-# Функция для получения предсказания для одного или нескольких отзывов
-def predict(reviews):
-    predictions = []
-    for review_text in reviews:
-        # Токенизация текста отзыва
-        encoded_review = tokenizer.encode_plus(
-            review_text,
-            max_length=MAX_LEN,
-            add_special_tokens=True,
-            return_token_type_ids=False,
-            padding='max_length',
-            return_attention_mask=True,
-            return_tensors='pt',
-            truncation=True
-        )
-
-        # Получение input_ids и attention_mask и перенос их на устройство (GPU/CPU)
-        input_ids = encoded_review['input_ids'].to(device)
-        attention_mask = encoded_review['attention_mask'].to(device)
-
-        # Получение предсказания модели, отключив вычисление градиентов для ускорения
-        with torch.no_grad():
-            output = model(input_ids, attention_mask)
-
-        # Очистка памяти GPU
-        torch.cuda.empty_cache()
-
-        # Преобразование предсказаний в бинарный формат (0 или 1) и добавление в список предсказаний
-        prediction = (output > 0.5).to(torch.int).tolist()[0]
-        predictions.append(prediction)
-    return predictions
-
-
-def process_predictions(reviews, platform_key, course_key):
-    # Здесь выполняется обработка предсказаний
-    predictions = predict(reviews)  # Пример предсказаний, замените на ваш алгоритм
-    results = {
-        "platform_key": platform_key,
-        "course_key": course_key,
-        "predictions": [sum(x) for x in zip(*predictions)]
-    }
-    try:
-        response = httpx.post(f"{URL}/save_the_prediction", data=results)
-        response.raise_for_status()
-    except httpx.HTTPStatusError as e:
-        # Обработка ошибки отправки
-        print(f"Failed to send results: {e.response.text}")
-
-
-# Инициализация FastAPI приложения
 app = FastAPI()
 
 
-# Обработчик POST запроса для предсказания по текстам отзывов
+class TextPredictionRequest(BaseModel):
+	text: str
+
+
 @app.post("/predict/text")
-async def process_review(
-        background_tasks: BackgroundTasks,
-        platform_key: str = Form(...),
-        course_key: str = Form(...),
-        review: list[str] = Form(...)
-):
-    # Постановка задачи в фоновую очередь
-    background_tasks.add_task(process_predictions, review, platform_key, course_key)
-
-    # Возвращаем ответ клиенту
-    return {"status": "Task accepted and is being processed."}
+async def predict_text_endpoint(request: TextPredictionRequest):
+	if not request.text:
+		raise HTTPException(status_code=400, detail="Text not provided")
+	try:
+		prediction = predict_text(request.text)
+		return prediction
+	except Exception as e:
+		raise HTTPException(status_code=500, detail=f"Prediction failed: {str(e)}")
 
 
-# Обработчик POST запроса для предсказания на основе загруженного CSV файла
+def predict_text(text: str) -> Dict[str, float]:
+	df = pd.DataFrame({"Reviews": [text]})
+	predictor = ReviewPredictor(df, tokenizer, MAX_LEN)
+	predicted_df = predictor.predict(model, device, TOPIC_KEYWORDS, batch_size=1)
+	return predicted_df.iloc[0].to_dict()
+
+
 @app.post("/predict/file")
-async def process_csv(
-        background_tasks: BackgroundTasks,
-        file: UploadFile = File(...),
-        platform_key: str = Form(...),
-        course_key: str = Form(...)
-):
-    # Чтение и декодирование содержимого CSV файла
-    content = await file.read()
-    df = pd.read_csv(io.StringIO(content.decode('utf-8')))
+async def predict_file_endpoint(csv_file: UploadFile = File(...)):
+	if not csv_file:
+		raise HTTPException(status_code=400, detail="CSV файл не предоставлен")
 
-    # Проверка наличия столбца 'review' в CSV файле
-    if 'review' not in df.columns:
-        raise HTTPException(status_code=400, detail="CSV file must contain a 'review' column.")
+	try:
+		df = pd.read_csv(csv_file.file)
+		predictor = ReviewPredictor(df, tokenizer, MAX_LEN)
+		predicted_df: pd.DataFrame = predictor.predict(model, device, TOPIC_KEYWORDS, batch_size=BATCH_SIZE)
 
-    # Преобразование столбца отзывов в список
-    reviews = df['review'].tolist()
+		# Преобразуем DataFrame в CSV
+		csv_buffer = io.StringIO()
+		predicted_df.to_csv(csv_buffer, index=False)
+		csv_buffer.seek(0)
 
-    # Постановка задачи в фоновую очередь
-    background_tasks.add_task(process_predictions, reviews, platform_key, course_key)
+		return StreamingResponse(
+			iter([csv_buffer.getvalue()]),
+			media_type="text/csv",
+			headers={"Content-Disposition": f"attachment; filename={csv_file.filename}_predictions.csv"}
+		)
+	except Exception as e:
+		raise HTTPException(status_code=500, detail=f"Ошибка при предсказании: {str(e)}")
 
-    # Возвращаем ответ клиенту
-    return {"status": "Task accepted and is being processed."}
 
-
-# Запуск приложения при запуске скрипта напрямую
 if __name__ == '__main__':
-    import uvicorn
+	import uvicorn
 
-    uvicorn.run(app, host="localhost", port=8001)  # Запуск Uvicorn сервера на порту 8001
+	uvicorn.run(app, host="0.0.0.0", port=8001)
