@@ -26,7 +26,7 @@ def predict_file(file):
 	endpoint = f"{API_URL}/predict/file"
 	response = None
 	try:
-		response = requests.post(endpoint, files={'csv_file': file})
+		response = requests.post(endpoint, files={'file': file})
 		response.raise_for_status()  # Проверка на успешный статус-код (200-299)
 
 		return io.BytesIO(response.content)

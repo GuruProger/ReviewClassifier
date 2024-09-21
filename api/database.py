@@ -5,6 +5,7 @@ from pathlib import Path
 
 db_path = Path(__file__).resolve().parent / "Feedback_AI.db"
 
+
 # Класс для работы с базой данных
 class DatabaseClient:
 	def __init__(self):

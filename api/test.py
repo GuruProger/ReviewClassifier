@@ -1,6 +1,6 @@
 import requests
 
-# Базовый URL для вашего API
+# Базовый URL для вашего aspect_extraction_reviews
 BASE_URL = "http://localhost:8000"
 PLATFORM_KEY = "ebfbwiebflbsvjhbjehf"
 SECRET_KEY = "23b301fe34fecfb712ee62fd33069686"
@@ -79,6 +79,7 @@ def test_get_user():
 	response = requests.get(f"{BASE_URL}/get_user", params=params)
 	print("GET /get_user:", response.json())
 
+
 def test_get_all_course():
 	params = {
 		"platform_key": PLATFORM_KEY,  # Замените на действительный ключ
@@ -87,12 +88,10 @@ def test_get_all_course():
 	print("GET /get_user:", response.json())
 
 
-# Запуск тестов
-if __name__ == "__main__":
-	test_review_from_list()
-	# test_review_from_file()
-	test_statistics()
-	test_add_course()
-	test_del_course()
-	test_add_user()
-	test_get_user()
+test_review_from_list()  # Вызов функции для отправки отзыва в виде списка
+test_statistics()  # Вызов функции для получения статистики
+test_add_course()  # Вызов функции для добавления курса
+test_del_course()  # Вызов функции для удаления курса
+test_add_user()  # Вызов функции для добавления пользователя
+test_get_user()  # Вызов функции для получения информации о пользователе
+test_get_all_course()

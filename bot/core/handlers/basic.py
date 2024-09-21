@@ -3,12 +3,12 @@ import requests
 from aiogram import Bot
 from aiogram.types import Message, BufferedInputFile
 from ..utils.model_prediction import predict_file, predict_text
-
+import time
 
 # Обработчик загрузки CSV файла
 async def handle_csv_upload(message: Message, bot: Bot):
 	document = message.document
-
+	s = time.time()
 	if document.mime_type != 'text/csv':
 		await message.answer("Пожалуйста, загрузите CSV файл.")
 	else:
@@ -34,8 +34,10 @@ async def handle_csv_upload(message: Message, bot: Bot):
 
 		result.seek(0)
 
-		await message.answer_document(
+		await message.reply_document(
 			document=BufferedInputFile(result.read(), document.file_name.split('.')[0] + '_predictions.csv'))
+		e = time.time()
+		await message.answer(f'Обработка файла заняла {round(e-s, 2)} сек.')
 
 
 # Обработчик отправки текстового сообщения

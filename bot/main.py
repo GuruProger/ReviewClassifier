@@ -2,7 +2,6 @@ import os
 from dotenv import load_dotenv
 import logging
 from aiogram import Bot, Dispatcher, F
-from aiogram.types import Message, ContentType
 from aiogram.filters import Command
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums.parse_mode import ParseMode
