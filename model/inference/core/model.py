@@ -2,9 +2,9 @@ import torch
 from torch import nn
 from transformers import AutoModel
 from pathlib import Path
+from .settings import PRE_TRAINED_MODEL_NAME
 
-PRE_TRAINED_MODEL_NAME = 'DeepPavlov/rubert-base-cased'
-path_weights = Path(__file__).resolve().parent.parent / 'weights' / 'saved_weights.pt'
+path_weights = Path(__file__).resolve().parent.parent.parent / 'weights' / 'saved_weights.pt'
 
 
 class ReviewsClassifier(nn.Module):

@@ -4,13 +4,14 @@ from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from transformers import AutoTokenizer
-from model import get_model
-from data_loader import ReviewPredictor
+from core.model import get_model
+from core.data_loader import ReviewPredictor
 from typing import Dict
 import io
 
 # Конфигурация модели и токенизатора
-PRE_TRAINED_MODEL_NAME = 'DeepPavlov/rubert-base-cased'
+from core.settings import PRE_TRAINED_MODEL_NAME
+
 MAX_LEN = 250
 BATCH_SIZE = 64
 TOPIC_KEYWORDS = ['практика', 'теория', 'преподаватель', 'технологии', 'актуальность']
@@ -48,12 +49,16 @@ def predict_text(text: str) -> Dict[str, float]:
 
 
 @app.post("/predict/file")
-async def predict_file_endpoint(csv_file: UploadFile = File(...)):
-	if not csv_file:
+async def predict_file_endpoint(file: UploadFile = File(...)):
+	if not file:
 		raise HTTPException(status_code=400, detail="CSV файл не предоставлен")
 
 	try:
-		df = pd.read_csv(csv_file.file)
+		df = pd.read_csv(file.file)
+		try:
+			df = df.drop(['практика', 'теория', 'преподаватель', 'технологии', 'актуальность'], axis=1)
+		except:
+			pass
 		predictor = ReviewPredictor(df, tokenizer, MAX_LEN)
 		predicted_df: pd.DataFrame = predictor.predict(model, device, TOPIC_KEYWORDS, batch_size=BATCH_SIZE)
 
@@ -62,10 +67,12 @@ async def predict_file_endpoint(csv_file: UploadFile = File(...)):
 		predicted_df.to_csv(csv_buffer, index=False)
 		csv_buffer.seek(0)
 
+		parts = file.filename.rsplit('.csv', 1)
+		new_filename = (parts[0] if len(parts) > 1 else file.filename) + '_predictions.csv'
 		return StreamingResponse(
 			iter([csv_buffer.getvalue()]),
 			media_type="text/csv",
-			headers={"Content-Disposition": f"attachment; filename={csv_file.filename}_predictions.csv"}
+			headers={"Content-Disposition": f"attachment; filename={new_filename}"}
 		)
 	except Exception as e:
 		raise HTTPException(status_code=500, detail=f"Ошибка при предсказании: {str(e)}")
